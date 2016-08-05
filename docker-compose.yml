@@ -1,0 +1,63 @@
+version: '2'
+services:
+  consula:
+    image: consul
+    tmpfs: /data
+    expose:
+     - "8300"
+     - "8301"
+     - "8302"
+     - "8301/udp"
+     - "8302/udp"
+     - "8600"
+     - "8600/udp"
+    ports:
+     - "8400:8400"
+     - "8500:8500"
+    volumes:
+     - ./consul/conf:/conf
+    command: agent -server -config-dir=/conf
+  consulb:
+    image: consul
+    tmpfs: /data
+    expose:
+     - "8300"
+     - "8301"
+     - "8302"
+     - "8301/udp"
+     - "8302/udp"
+     - "8400"
+     - "8600"
+     - "8600/udp"
+     - "8500"
+    volumes:
+     - ./consul/conf:/conf
+    command: agent -server -config-dir=/conf -retry-join=consula
+  consulc:
+    image: consul
+    tmpfs: /data
+    expose:
+     - "8300"
+     - "8301"
+     - "8302"
+     - "8301/udp"
+     - "8302/udp"
+     - "8400"
+     - "8600"
+     - "8600/udp"
+     - "8500"
+    volumes:
+     - ./consul/conf:/conf
+    command: agent -server -config-dir=/conf -retry-join=consula
+
+  vault:
+    image: vault
+    ports:
+     - "8200:8200"
+    volumes:
+     - ./vault/conf:/conf
+    command: server -config=/conf
+    depends_on:
+      - "consula"
+      - "consulb"
+      - "consulc"

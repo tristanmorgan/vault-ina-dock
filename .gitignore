@@ -1,0 +1,4 @@
+consul/consul_*.zip
+vault/vault_*.zip
+vault/certs/*.pem
+consul/data
