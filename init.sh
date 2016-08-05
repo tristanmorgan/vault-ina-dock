@@ -6,7 +6,7 @@ export CONSUL_MASTER_TOKEN=ab1469ec-078c-42cf-bb7b-6ef2a52360ea
 curl -X PUT -d @consul/anonymous_acl.json "http://127.0.0.1:8500/v1/acl/update?token=$CONSUL_MASTER_TOKEN"
 
 #initialise  Vault
-export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_ADDR=https://127.0.0.1:8200
 export VAULT_SKIP_VERIFY=true
 
 vault init -check
@@ -59,6 +59,15 @@ vault write auth/userpass/users/$USER password=$PASSWORD policies=admin
 echo "INFO: created a user with a dummy password, not secure"
 echo "INFO: login with 'vault auth -method=userpass username=$USER password=$PASSWORD'"
 
+#upload some SSH keys to the secret backen
+ssh-keygen -q -t rsa -N $PASSWORD -C temp@vault -f id_temp
+
+vault write secret/$USER/id_temp private=@id_temp public=@id_temp.pub
+rm -f id_temp id_temp.pub
+
+echo "INFO: uploaded a dummy ssh key pair to secret/$USER/id_temp"
+echo "INFO: retrieve with 'vault read -field=private secret/$USER/id_temp'"
+
 #Consul secret backend mount
 if [ -n "$CONSUL_MASTER_TOKEN" ]
 then
@@ -83,4 +92,5 @@ fi
 echo
 echo "don't forget to "
 echo "export VAULT_ADDR=$VAULT_ADDR "
+echo "export VAULT_SKIP_VERIFY=true"
 echo "export VAULT_TOKEN=$VAULT_TOKEN "
