@@ -11,5 +11,9 @@
   "log_level": "INFO",
   "recursors": ["8.8.8.8","8.8.4.4"],
   "rejoin_after_leave": false,
-  "ui": true
+  "ui": true,
+
+  "ports": {
+    "dns": 53
+  }
 }

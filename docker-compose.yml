@@ -14,8 +14,8 @@ services:
     ports:
      - "8400:8400"
      - "8500:8500"
-     - "8600:8600"
-     - "8600:8600/udp"
+     - "8600:53"
+     - "8600:53/udp"
     volumes:
      - ./consul/conf:/conf:ro
     command: agent -server -config-dir=/conf -bootstrap-expect=3
@@ -30,9 +30,10 @@ services:
      - "8302"
      - "8301/udp"
      - "8302/udp"
+     - "53"
+     - "53/udp"
+    ports:
      - "8400"
-     - "8600"
-     - "8600/udp"
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
@@ -48,9 +49,10 @@ services:
      - "8302"
      - "8301/udp"
      - "8302/udp"
+     - "53"
+     - "53/udp"
+    ports:
      - "8400"
-     - "8600"
-     - "8600/udp"
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
@@ -62,6 +64,9 @@ services:
      - IPC_LOCK
     ports:
      - "8200:8200"
+    dns:
+     - 172.18.0.2
+     - 172.18.0.3
     volumes:
      - ./vault/conf:/conf:ro
     command: server -config=/conf
