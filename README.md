@@ -15,7 +15,7 @@ downloaded from HashiCorp.
     ./build.sh
     
     cd vault
-    ./build
+    ./build.sh
 
 Usage
 -----
@@ -27,4 +27,5 @@ Once the containers are built run docker compose and the Consul cluster should b
 Once running initialise Vault, unseal it and its ready for (testing) use.
 
     export VAULT_ADDR=http://120.0.0.1:8200
-    
+    vault init
+    vault unseal

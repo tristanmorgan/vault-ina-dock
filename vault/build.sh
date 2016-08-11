@@ -7,6 +7,6 @@ if [ ! -f vault_${VAULT_VERSION}_linux_amd64.zip ]; then
 fi
 unzip vault_${VAULT_VERSION}_linux_amd64.zip
 
-docker build -t vault:${VAULT_VERSION} .
+docker build -t vault:${VAULT_VERSION} -t vault:latest .
 
 rm vault

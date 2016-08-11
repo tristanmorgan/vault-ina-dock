@@ -3,6 +3,8 @@ services:
   consula:
     image: consul
     tmpfs: /data
+    cap_add:
+     - NET_BIND_SERVICE
     expose:
      - "8300"
      - "8301"
@@ -15,11 +17,13 @@ services:
      - "8600:8600"
      - "8600:8600/udp"
     volumes:
-     - ./consul/conf:/conf
+     - ./consul/conf:/conf:ro
     command: agent -server -config-dir=/conf
   consulb:
     image: consul
     tmpfs: /data
+    cap_add:
+     - NET_BIND_SERVICE
     expose:
      - "8300"
      - "8301"
@@ -31,11 +35,13 @@ services:
      - "8600/udp"
      - "8500"
     volumes:
-     - ./consul/conf:/conf
+     - ./consul/conf:/conf:ro
     command: agent -server -config-dir=/conf -retry-join=consula
   consulc:
     image: consul
     tmpfs: /data
+    cap_add:
+     - NET_BIND_SERVICE
     expose:
      - "8300"
      - "8301"
@@ -47,7 +53,7 @@ services:
      - "8600/udp"
      - "8500"
     volumes:
-     - ./consul/conf:/conf
+     - ./consul/conf:/conf:ro
     command: agent -server -config-dir=/conf -retry-join=consula
 
   vault:
@@ -57,7 +63,7 @@ services:
     ports:
      - "8200:8200"
     volumes:
-     - ./vault/conf:/conf
+     - ./vault/conf:/conf:ro
     command: server -config=/conf
     depends_on:
       - "consula"
