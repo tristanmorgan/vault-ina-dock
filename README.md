@@ -1,7 +1,7 @@
 Vault ina Dock
 ==============
 
-Example of Hashicorp Vault running inside Docker with HashiCorp Consul running in a cluster as the storage backend.
+Example of [Hashicorp Vault](https://www.vaultproject.io/) running inside [Docker](https://www.docker.com/) with [HashiCorp Consul](https://www.consul.io/) running in a cluster as the storage backend.
 
 Only requires Docker, Docker Compose and a shell.
 
@@ -9,7 +9,7 @@ Building the Containers
 -----------------------
 
 Inside both consul and vault folders are build.sh scripts that will build minimal containers with only the Go binary
-downloaded from HashiCorp.
+downloaded from [HashiCorp](https://www.hashicorp.com/).
 
     cd consul
     ./build.sh
@@ -24,8 +24,11 @@ Once the containers are built run docker compose and the Consul cluster should b
 
     docker-compose up
 
-Once running initialise Vault, unseal it and its ready for (testing) use.
+Once running initialise Vault with the init.sh script and its ready for (testing) use.
 
-    export VAULT_ADDR=http://120.0.0.1:8200
-    vault init
-    vault unseal
+    ./init.sh
+
+Backups
+-------
+
+To backup the KV store and ACL from Consul (and all the Vault data with it) try at [Consulate](https://github.com/gmr/consulate)
