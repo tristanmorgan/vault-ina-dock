@@ -3,7 +3,7 @@
 #add a default policy for consul
 export CONSUL_MASTER_TOKEN=ab1469ec-078c-42cf-bb7b-6ef2a52360ea
 
-curl -X PUT -d @consul/anonymous_acl.json "http://127.0.0.1:8500/v1/acl/update/anonymous?token=$CONSUL_MASTER_TOKEN"
+curl -X PUT -d @consul/anonymous_acl.json "http://127.0.0.1:8500/v1/acl/update?token=$CONSUL_MASTER_TOKEN"
 
 #initialise  Vault
 export VAULT_ADDR=http://127.0.0.1:8200
@@ -12,19 +12,18 @@ export VAULT_SKIP_VERIFY=true
 vault init -check
 if [ $? -ne 0 ]
 then
-    vault init -key-shares=3 -key-threshold=2 | tee vault.init > /dev/null
+    VAULT_INIT_OUT=$( vault init -key-shares=3 -key-threshold=2 )
     echo "SUCCESS: Vault initialised"
 
-    for key in $(cat vault.init | awk '/hex/ {print $NF}'); do
+    for key in $(echo "$VAULT_INIT_OUT" | awk '/hex/ {print $NF}'); do
       vault unseal $key > /dev/null
     done
 
-    export VAULT_TOKEN=$(cat vault.init | awk '/Token/ {print $NF}')
+    export VAULT_TOKEN=$(echo "$VAULT_INIT_OUT" | awk '/Token/ {print $NF}')
 
     echo "WARN: don't loose these unseal keys nor token"
-    grep 'Key' vault.init
-    grep 'Token' vault.init
-    rm vault.init
+    echo "$VAULT_INIT_OUT" | grep 'Key'
+    echo "$VAULT_INIT_OUT" | grep 'Token'
 else
     echo "WARN: Cannot reinitialise the Vault"
 fi
@@ -80,3 +79,8 @@ then
 
   vault write aws/roles/readonly arn=arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
 fi
+
+echo
+echo "don't forget to "
+echo "export VAULT_ADDR=$VAULT_ADDR "
+echo "export VAULT_TOKEN=$VAULT_TOKEN "
