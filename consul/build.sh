@@ -2,7 +2,7 @@
 
 export CONSUL_VERSION=0.6.4
 
-if [ -n $1 ]; then
+if [ -n "$1" ]; then
   export CONSUL_VERSION=$1
 fi
 

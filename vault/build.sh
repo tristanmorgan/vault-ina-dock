@@ -2,7 +2,7 @@
 
 export VAULT_VERSION=0.6.1
 
-if [ -n $1 ]; then
+if [ -n "$1" ]; then
   export VAULT_VERSION=$1
 fi
 
