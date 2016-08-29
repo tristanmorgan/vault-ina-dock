@@ -18,7 +18,7 @@ services:
      - "8600:8600/udp"
     volumes:
      - ./consul/conf:/conf:ro
-    command: agent -server -config-dir=/conf
+    command: agent -server -config-dir=/conf -bootstrap-expect=3
   consulb:
     image: consul
     tmpfs: /data
@@ -36,7 +36,7 @@ services:
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
-    command: agent -server -config-dir=/conf -retry-join=consula
+    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc
   consulc:
     image: consul
     tmpfs: /data
@@ -54,7 +54,7 @@ services:
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
-    command: agent -server -config-dir=/conf -retry-join=consula
+    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulb
 
   vault:
     image: vault
