@@ -1,6 +1,6 @@
 backend "consul" {
   address = "consula:8500"
-  path = "vault"
+  path = "vault/"
   scheme = "http"
   token = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
   disable_clustering = "false"

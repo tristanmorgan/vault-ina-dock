@@ -50,6 +50,9 @@ for policy in $(ls vault/*.hcl); do
   vault policy-write $(basename $policy .hcl) $policy
 done
 
+#Enable logging
+vault audit-enable -description="Audit logs to a file" file file_path="/logs/audit.log"
+
 #Userpass authentication backend
 PASSWORD=$(echo $USER:salt | base64 | head -c 10)
 vault auth-enable -description="User/password based credentials" userpass

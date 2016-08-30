@@ -58,6 +58,7 @@ services:
 
   vault:
     image: vault
+    tmpfs: /logs
     cap_add:
      - IPC_LOCK
     ports:
