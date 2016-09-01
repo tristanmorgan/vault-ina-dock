@@ -1,4 +1,5 @@
 consul/consul_*.zip
+consul/certs/*.pem
 vault/vault_*.zip
 vault/certs/*.pem
 consul/data

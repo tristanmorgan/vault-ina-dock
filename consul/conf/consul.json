@@ -11,5 +11,13 @@
   "log_level": "INFO",
   "recursors": ["8.8.8.8","8.8.4.4"],
   "rejoin_after_leave": false,
-  "ui": true
+  "ui": true,
+  "ports": {
+    "https": 8443,
+    "dns": 53
+  },
+
+  "server_name": "consul.nemurine.com",
+  "key_file": "/certs/privkey.pem",
+  "cert_file": "/certs/fullchain.pem"
 }

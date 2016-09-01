@@ -14,12 +14,16 @@ path "aws/config/root" {
   policy = "write"
 }
 
-path "aws/sts/*" {
+path "aws/creds/*" {
   policy = "read"
 }
 
 path "consul/creds/*" {
   policy = "read"
+}
+
+path "rootca/issue/nemurine.com" {
+  policy = "write"
 }
 
 path "sys/mounts" {
