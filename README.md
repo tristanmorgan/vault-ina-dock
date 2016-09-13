@@ -17,6 +17,13 @@ downloaded from [HashiCorp](https://www.hashicorp.com/).
     cd vault
     ./build.sh
 
+Importing root certs
+--------------------
+
+The containers are so bare that they do not even have root certificates to verify the identity of AWS endpoints. to fix that run the following to extract a ca-bundle for your system.
+
+    ./root-certs.sh
+
 Usage
 -----
 
@@ -32,3 +39,9 @@ Backups
 -------
 
 To backup the KV store and ACL from Consul (and all the Vault data with it) try at [Consulate](https://github.com/gmr/consulate)
+
+TLS Certs
+---------
+
+You can also create your own slef signed certificates and even use them for the communication to Consul and Vault and between the two. The gets stuck in a bootstrap cenario where you use Vault to generate the certificates but need certificates to start Vault. replace the "tls_..." lines with "tls_disable = 1" to start without TLS, generate your certificates and then stop and restart after reverting.
+

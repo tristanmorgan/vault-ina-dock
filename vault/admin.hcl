@@ -18,6 +18,10 @@ path "aws/creds/*" {
   policy = "read"
 }
 
+path "aws/sts/*" {
+  policy = "read"
+}
+
 path "consul/creds/*" {
   policy = "read"
 }
