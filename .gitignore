@@ -4,3 +4,4 @@ vault/vault_*.zip
 vault/certs/*.pem
 vault/ssl/*.pem
 consul/data
+vault/logs/

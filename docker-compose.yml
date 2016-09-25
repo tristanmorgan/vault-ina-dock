@@ -64,7 +64,6 @@ services:
 
   vault:
     image: vault
-    tmpfs: /logs
     cap_add:
      - IPC_LOCK
     ports:
@@ -73,6 +72,7 @@ services:
      - ./vault/conf:/conf:ro
      - ./vault/certs:/certs:ro
      - ./vault/ssl:/etc/ssl:ro
+     - ./vault/logs:/logs:rw
     command: server -config=/conf
     depends_on:
       - "consula"

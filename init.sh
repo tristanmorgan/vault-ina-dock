@@ -19,7 +19,7 @@ then
     VAULT_INIT_OUT=$( vault init -key-shares=3 -key-threshold=2 )
     echo "SUCCESS: Vault initialised"
 
-    for key in $(echo "$VAULT_INIT_OUT" | awk '/hex/ {print $NF}'); do
+    for key in $(echo "$VAULT_INIT_OUT" | awk '/Key/ {print $NF}'); do
       vault unseal $key > /dev/null
     done
 
@@ -49,13 +49,13 @@ then
     exit 3
 fi
 
+#Enable logging
+vault audit-enable -description="Audit logs to a file" file file_path="/logs/audit.log" log_raw=true
+
 #Add Vault policies from files
 for policy in $(ls vault/*.hcl); do
   vault policy-write $(basename $policy .hcl) $policy
 done
-
-#Enable logging
-vault audit-enable -description="Audit logs to a file" file file_path="/logs/audit.log"
 
 #Userpass authentication backend
 PASSWORD=$(echo $USER:salt | base64 | head -c 10)
