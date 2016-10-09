@@ -113,10 +113,10 @@ then
   vault mount -description="Generate SSL Certificates" -path=rootca pki
   vault mount-tune -max-lease-ttl=87600h rootca
   vault write rootca/config/urls issuing_certificates="http://127.0.0.1:8200/v1/rootca/ca" crl_distribution_points="http://127.0.0.1:8200/v1/rootca/crl"
-  vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" max_ttl="72h"
+  vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="72h" key_bits=521 key_type=ec
 
-  vault write -format=json rootca/root/generate/internal common_name=$DOMAIN_ROOT ttl=87600h > $DOMAIN_ROOT.json
-  vault write -format=json rootca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" > $CONSUL_VAULT_FQDN.json
+  vault write -format=json rootca/root/generate/internal common_name=$DOMAIN_ROOT ttl=87600h format=pem_bundle key_bits=521 key_type=ec > $DOMAIN_ROOT.json
+  vault write -format=json rootca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" format=pem_bundle > $CONSUL_VAULT_FQDN.json
 
   cat $DOMAIN_ROOT.json | jq -r .data.issuing_ca > ca_cert.pem
   cat $CONSUL_VAULT_FQDN.json | jq -r .data.certificate > cert.pem
