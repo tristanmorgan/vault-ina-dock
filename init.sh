@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #add a default policy for consul
-export DOMAIN_ROOT=nemurine.com
+export DOMAIN_ROOT=$USER
 export CONSUL_VAULT_FQDN=consul.$DOMAIN_ROOT
 export CONSUL_HTTP_TOKEN=ab1469ec-078c-42cf-bb7b-6ef2a52360ea
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
@@ -50,6 +50,7 @@ then
 fi
 
 #Enable logging
+rm vault/logs/audit.log
 vault audit-enable -description="Audit logs to a file" file file_path="/logs/audit.log" log_raw=true
 
 #Add Vault policies from files
@@ -67,7 +68,7 @@ echo "INFO: created a user with a dummy password, not secure"
 echo "INFO: login with 'vault auth -method=userpass username=$USER password=$PASSWORD'"
 
 #upload some SSH keys to the secret backend
-ssh-keygen -q -t rsa -N $PASSWORD -C temp@vault -f id_temp
+ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
 
 vault write secret/$USER/id_temp private=@id_temp public=@id_temp.pub
 rm -f id_temp
@@ -110,17 +111,30 @@ fi
 #PKI secret backend mount
 if [ -n "$CONSUL_VAULT_FQDN" ]
 then
-  vault mount -description="Generate SSL Certificates" -path=rootca pki
+  vault mount -description="Host a Root CA" -path=rootca pki
   vault mount-tune -max-lease-ttl=87600h rootca
   vault write rootca/config/urls issuing_certificates="http://127.0.0.1:8200/v1/rootca/ca" crl_distribution_points="http://127.0.0.1:8200/v1/rootca/crl"
-  vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="72h" key_bits=521 key_type=ec
+  vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="8760h" key_bits=521 key_type=ec
 
-  vault write -format=json rootca/root/generate/internal common_name=$DOMAIN_ROOT ttl=87600h format=pem_bundle key_bits=521 key_type=ec > $DOMAIN_ROOT.json
-  vault write -format=json rootca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" format=pem_bundle > $CONSUL_VAULT_FQDN.json
+  vault write -format=json rootca/root/generate/internal common_name="$USER self-signed Root CA" ttl=8760h format=pem_bundle key_bits=521 key_type=ec > $DOMAIN_ROOT.json
 
-  cat $DOMAIN_ROOT.json | jq -r .data.issuing_ca > ca_cert.pem
-  cat $CONSUL_VAULT_FQDN.json | jq -r .data.certificate > cert.pem
-  cat $CONSUL_VAULT_FQDN.json | jq -r .data.private_key > privkey.pem
+  vault mount -description="Host an Intermediate CA" -path=intca pki
+  vault mount-tune -max-lease-ttl=8760h intca
+  vault write -format=json intca/intermediate/generate/internal common_name="$USER intermediate CA" ttl=8760h format=pem_bundle key_bits=256 key_type=ec > int.$DOMAIN_ROOT.csr.json
+  jq -r .data.csr int.$DOMAIN_ROOT.csr.json > csr.pem
+  vault write -format=json rootca/root/sign-intermediate csr=@csr.pem format=pem_bundle use_csr_values=true > int.$DOMAIN_ROOT.json
+  jq -r .data.certificate int.$DOMAIN_ROOT.json > intca.cert.pem
+
+  vault write intca/intermediate/set-signed certificate=@intca.cert.pem
+  rm int.$DOMAIN_ROOT.csr.json int.$DOMAIN_ROOT.json csr.pem intca.cert.pem
+
+  vault write intca/config/urls issuing_certificates="http://127.0.0.1:8200/v1/intca/ca" crl_distribution_points="http://127.0.0.1:8200/v1/intca/crl"
+  vault write intca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="72h" key_bits=256 key_type=ec
+  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" format=pem_bundle > $CONSUL_VAULT_FQDN.json
+
+  jq -r .data.issuing_ca $DOMAIN_ROOT.json > ca_cert.pem
+  jq -r .data.certificate $CONSUL_VAULT_FQDN.json > cert.pem
+  jq -r .data.private_key $CONSUL_VAULT_FQDN.json > privkey.pem
   cat cert.pem > fullchain.pem
   cat ca_cert.pem >> fullchain.pem
 
@@ -130,7 +144,7 @@ then
   rm $DOMAIN_ROOT.json $CONSUL_VAULT_FQDN.json
 
   echo "INFO: created Certificates that can be used to secure communications with the cluster."
-  echo "INFO: generate more with 'vault write rootca/issue/$DOMAIN_ROOT common_name=test.$DOMAIN_ROOT'"
+  echo "INFO: generate more with 'vault write intca/issue/$DOMAIN_ROOT common_name=test.$DOMAIN_ROOT'"
 fi
 
 echo
