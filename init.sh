@@ -1,9 +1,9 @@
 #!/bin/sh
 
 #add a default policy for consul
-export DOMAIN_ROOT=$USER
+export DOMAIN_ROOT=$USER.example.com
 export CONSUL_VAULT_FQDN=consul.$DOMAIN_ROOT
-export CONSUL_HTTP_TOKEN=ab1469ec-078c-42cf-bb7b-6ef2a52360ea
+export CONSUL_HTTP_TOKEN=$(jq -r .acl_master_token consul/conf/consul.json)
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
 
 curl -X PUT -d @consul/anonymous_acl.json "http://$CONSUL_HTTP_ADDR/v1/acl/update?token=$CONSUL_HTTP_TOKEN"
@@ -67,6 +67,14 @@ vault write auth/userpass/users/$USER password=$PASSWORD policies=admin
 echo "INFO: created a user with a dummy password, not secure"
 echo "INFO: login with 'vault auth -method=userpass username=$USER password=$PASSWORD'"
 
+#GitHub authentication backend
+vault auth-enable -description="Authenticate using GitHub" github
+vault write auth/github/config organization=vibrato
+vault write auth/github/map/teams/vibrato-engineers value=admin
+
+echo "INFO: you can provide your personal access token with VAULT_AUTH_GITHUB_TOKEN or"
+echo "INFO: login with 'vault auth -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
+
 #upload some SSH keys to the secret backend
 ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
 
@@ -91,7 +99,7 @@ then
   echo
   echo "INFO: created a readonly role within Consul"
   echo "INFO: retrieve with 'vault read consul/creds/readonly'"
-  echo "INFO: test with 'curl http://$CONSUL_HTTP_ADDR/v1/kv/$USER?token=$CONSUL_HTTP_TOKEN'"
+  echo "INFO: test with 'consul kv get $USER'"
 fi
 rm -f id_temp.pub
 
@@ -113,7 +121,7 @@ if [ -n "$CONSUL_VAULT_FQDN" ]
 then
   vault mount -description="Host a Root CA" -path=rootca pki
   vault mount-tune -max-lease-ttl=87600h rootca
-  vault write rootca/config/urls issuing_certificates="http://127.0.0.1:8200/v1/rootca/ca" crl_distribution_points="http://127.0.0.1:8200/v1/rootca/crl"
+  vault write rootca/config/urls issuing_certificates="$VAULT_ADDR/v1/rootca/ca" crl_distribution_points="$VAULT_ADDR/v1/rootca/crl"
   vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="8760h" key_bits=521 key_type=ec
 
   vault write -format=json rootca/root/generate/internal common_name="$USER self-signed Root CA" ttl=8760h format=pem_bundle key_bits=521 key_type=ec > $DOMAIN_ROOT.json
@@ -128,7 +136,7 @@ then
   vault write intca/intermediate/set-signed certificate=@intca.cert.pem
   rm int.$DOMAIN_ROOT.csr.json int.$DOMAIN_ROOT.json csr.pem intca.cert.pem
 
-  vault write intca/config/urls issuing_certificates="http://127.0.0.1:8200/v1/intca/ca" crl_distribution_points="http://127.0.0.1:8200/v1/intca/crl"
+  vault write intca/config/urls issuing_certificates="$VAULT_ADDR/v1/intca/ca" crl_distribution_points="$VAULT_ADDR/v1/intca/crl"
   vault write intca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="72h" key_bits=256 key_type=ec
   vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" format=pem_bundle > $CONSUL_VAULT_FQDN.json
 

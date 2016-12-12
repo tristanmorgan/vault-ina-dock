@@ -2,7 +2,9 @@ version: '2'
 services:
   consula:
     image: consul
-    tmpfs: /data
+    tmpfs:
+     - /tmp
+     - /data
     cap_add:
      - NET_BIND_SERVICE
     expose:
@@ -23,7 +25,9 @@ services:
     command: agent -server -config-dir=/conf -bootstrap-expect=3 -retry-join=consulb -retry-join=consulc
   consulb:
     image: consul
-    tmpfs: /data
+    tmpfs:
+     - /tmp
+     - /data
     cap_add:
      - NET_BIND_SERVICE
     expose:
@@ -43,7 +47,9 @@ services:
     command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc
   consulc:
     image: consul
-    tmpfs: /data
+    tmpfs:
+     - /tmp
+     - /data
     cap_add:
      - NET_BIND_SERVICE
     expose:

@@ -14,7 +14,7 @@
   "ui": true,
   "ports": {
     "https": 8443,
-    "dns": 53
+    "dns": 8600
   },
 
   "server_name": "consul.nemurine.com",
