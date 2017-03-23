@@ -84,6 +84,17 @@ rm -f id_temp
 echo "INFO: uploaded a dummy ssh key pair to secret/$USER/id_temp"
 echo "INFO: retrieve with 'vault read -field=private secret/$USER/id_temp'"
 
+#TOTP Time-based One Time Passcodes
+vault mount -description="Time-based One Time Passcodes" totp
+vault write totp/keys/tristan generate=true account_name=$USER issuer=Vault
+
+MFAKEY=$(vault read -field=url totp/keys/$USER)
+
+echo "INFO: generated an OTP secret"
+echo "INFO: add to your authenticator the following code"
+echo "INFO: '$MFAKEY'"
+echo "INFO: validate with 'vault write totp/code/$USER code=<T-OTP-Code>'"
+
 #Consul secret backend mount
 if [ -n "$CONSUL_HTTP_TOKEN" ]
 then

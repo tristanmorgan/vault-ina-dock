@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export VAULT_VERSION=0.6.2
+export VAULT_VERSION=0.7.1
 
 if [ -n "$1" ]; then
   export VAULT_VERSION=$1
