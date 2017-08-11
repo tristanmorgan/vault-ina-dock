@@ -81,3 +81,22 @@ services:
       - "consula"
       - "consulb"
       - "consulc"
+  
+  hashi:
+    image: jippi/hashi-ui
+    ports:
+     - "3000:3000"
+    environment:
+      CONSUL_ENABLE: 1
+      CONSUL_ADDR: 'consula:8500'
+      CONSUL_ACL_TOKEN: 'ab1469ec-078c-42cf-bb7b-6ef2a52360ea'
+    depends_on:
+      - "consula"
+
+  vault-ui:
+    image: djenriquez/vault-ui
+    ports:
+     - "8000:8000"
+    depends_on:
+      - "vault"
+
