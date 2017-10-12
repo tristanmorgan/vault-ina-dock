@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export CONSUL_VERSION=0.9.2
+export CONSUL_VERSION=1.0.0
 
 if [ -n "$1" ]; then
   export CONSUL_VERSION=$1

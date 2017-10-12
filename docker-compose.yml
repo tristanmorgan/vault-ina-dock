@@ -76,6 +76,7 @@ services:
      - ./vault/certs:/certs:ro
      - ./vault/ssl:/etc/ssl:ro
      - ./vault/logs:/logs:rw
+    restart: unless-stopped
     command: server -config=/conf
     depends_on:
       - "consula"
