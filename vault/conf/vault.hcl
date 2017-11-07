@@ -11,3 +11,5 @@ listener "tcp" {
   tls_key_file = "/certs/privkey.pem"
   tls_cert_file = "/certs/fullchain.pem"
 }
+
+ui = true
