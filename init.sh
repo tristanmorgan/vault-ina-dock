@@ -3,12 +3,12 @@
 #add a default policy for consul
 export DOMAIN_ROOT=$USER.example.com
 export CONSUL_VAULT_FQDN=consul.$DOMAIN_ROOT
-export CONSUL_HTTP_TOKEN=$(jq -r .acl_master_token consul/conf/consul.json)
+export CONSUL_HTTP_TOKEN=$(awk '/acl_master_token/ {print $3}' consul/conf/consul.hcl)
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
 
 curl -X PUT -d @consul/anonymous_acl.json "http://$CONSUL_HTTP_ADDR/v1/acl/update?token=$CONSUL_HTTP_TOKEN"
 
-#initialise  Vault
+#initialise Vault
 export VAULT_ADDR=https://127.0.0.1:8200
 export VAULT_SKIP_VERIFY=true
 
@@ -86,9 +86,11 @@ echo "INFO: retrieve with 'vault read -field=private secret/$USER/id_temp'"
 
 #TOTP Time-based One Time Passcodes
 vault mount -description="Time-based One Time Passcodes" totp
-vault write totp/keys/tristan generate=true account_name=$USER issuer=Vault
+vault write -format=json totp/keys/$USER generate=true account_name=$USER issuer=Vault > $USER.totp.json
 
-MFAKEY=$(vault read -field=url totp/keys/$USER)
+jq -r .data.barcode $USER.totp.json | base64 -D | open -f -a Preview
+MFAKEY=$(jq -r .data.url $USER.totp.json)
+rm $USER.totp.json
 
 echo "INFO: generated an OTP secret"
 echo "INFO: add to your authenticator the following code"
@@ -127,7 +129,7 @@ then
   echo "INFO: retrieve with 'vault read aws/creds/readonly'"
 fi
 
-#PKI secret backend mount
+#PKI secret (Root and Intermediate CA) backend mount
 if [ -n "$CONSUL_VAULT_FQDN" ]
 then
   vault mount -description="Host a Root CA" -path=rootca pki
@@ -142,14 +144,14 @@ then
   vault write -format=json intca/intermediate/generate/internal common_name="$USER intermediate CA" ttl=8760h format=pem_bundle key_bits=256 key_type=ec > int.$DOMAIN_ROOT.csr.json
   jq -r .data.csr int.$DOMAIN_ROOT.csr.json > csr.pem
   vault write -format=json rootca/root/sign-intermediate csr=@csr.pem format=pem_bundle use_csr_values=true > int.$DOMAIN_ROOT.json
-  jq -r .data.certificate int.$DOMAIN_ROOT.json > intca.cert.pem
+  jq -r .data.certificate int.$DOMAIN_ROOT.json > intca_cert.pem
 
-  vault write intca/intermediate/set-signed certificate=@intca.cert.pem
-  rm int.$DOMAIN_ROOT.csr.json int.$DOMAIN_ROOT.json csr.pem intca.cert.pem
+  vault write intca/intermediate/set-signed certificate=@intca_cert.pem
+  rm int.$DOMAIN_ROOT.csr.json int.$DOMAIN_ROOT.json csr.pem
 
   vault write intca/config/urls issuing_certificates="$VAULT_ADDR/v1/intca/ca" crl_distribution_points="$VAULT_ADDR/v1/intca/crl"
   vault write intca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="72h" key_bits=256 key_type=ec
-  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" format=pem_bundle > $CONSUL_VAULT_FQDN.json
+  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_VAULT_FQDN" ip_sans=127.0.0.1 format=pem_bundle > $CONSUL_VAULT_FQDN.json
 
   jq -r .data.issuing_ca $DOMAIN_ROOT.json > ca_cert.pem
   jq -r .data.certificate $CONSUL_VAULT_FQDN.json > cert.pem
@@ -164,12 +166,26 @@ then
 
   echo "INFO: created Certificates that can be used to secure communications with the cluster."
   echo "INFO: generate more with 'vault write intca/issue/$DOMAIN_ROOT common_name=test.$DOMAIN_ROOT'"
+  docker kill -s SIGHUP vaultinadock_vault_1
 fi
+
+#Cert authentication backend
+# vault auth-enable -description="Authenticate using a Personal Certificate" cert
+# vault write auth/cert/certs/$USER display_name=$USER policies=admin certificate=@vault/cert/intca_cert.pem ttl=3600
+#
+# vault write -format=json intca/issue/$DOMAIN_ROOT common_name="client.$DOMAIN_ROOT" format=pem_bundle > client.$DOMAIN_ROOT.json
+# jq -r .data.certificate client.tristan.example.com.json > client.certificate.pem
+# openssl pkcs12 -export -out certificate.p12 -in client.certificate.pem -certfile client.cacert.pem
+# echo "INFO: login with 'vault auth -method=cert -ca-cert=vault/cert/intca_cert.pem -client-cert=$USER.cert.pem -client-key=$USER.key.pem'"
+
 
 echo
 echo "don't forget to:"
-echo "export VAULT_ADDR=$VAULT_ADDR "
-echo "export VAULT_SKIP_VERIFY=true"
 echo "export VAULT_TOKEN=$VAULT_TOKEN "
 echo "export CONSUL_HTTP_TOKEN=$CONSUL_HTTP_TOKEN"
 echo "export CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR"
+echo
+echo "export VAULT_SKIP_VERIFY=true"
+echo " or set "
+echo "VAULT_TLS_SERVER_NAME=$CONSUL_VAULT_FQDN"
+echo "VAULT_CAPATH=$PWD/vault/certs/ca_cert.pem"
