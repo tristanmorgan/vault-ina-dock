@@ -1,26 +1,26 @@
 #!/bin/sh
 
 #add a default policy for consul
-export DOMAIN_ROOT=$USER.example.com
+export DOMAIN_ROOT=service.consul
 export CONSUL_VAULT_FQDN=consul.$DOMAIN_ROOT
 export CONSUL_HTTP_TOKEN=$(awk '/acl_master_token/ {print $3}' consul/conf/consul.hcl)
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
 
-curl -X PUT -d @consul/anonymous_acl.json "http://$CONSUL_HTTP_ADDR/v1/acl/update?token=$CONSUL_HTTP_TOKEN"
+curl -X PUT -d @consul/anonymous_acl.json --header "X-Consul-Token: $CONSUL_HTTP_TOKEN" "http://$CONSUL_HTTP_ADDR/v1/acl/update"
 
 #initialise Vault
 export VAULT_ADDR=https://127.0.0.1:8200
 export VAULT_SKIP_VERIFY=true
 
 echo
-vault init -check
+vault operator init -status
 if [ $? -ne 0 ]
 then
-    VAULT_INIT_OUT=$( vault init -key-shares=3 -key-threshold=2 )
+    VAULT_INIT_OUT=$( vault operator init -key-shares=3 -key-threshold=2 )
     echo "SUCCESS: Vault initialised"
 
     for key in $(echo "$VAULT_INIT_OUT" | awk '/Key/ {print $NF}'); do
-      vault unseal $key > /dev/null
+      vault operator unseal $key > /dev/null
     done
 
     export VAULT_TOKEN=$(echo "$VAULT_INIT_OUT" | awk '/Token/ {print $NF}')
@@ -33,16 +33,15 @@ else
 fi
 echo
 
-VAULT_TOKEN=${VAULT_TOKEN:-$(cat ~/.vault-token)}
-
-if [ -z "$VAULT_TOKEN" ]
+vault token lookup > /dev/null
+if [ $? -ne 0 ]
 then
     echo "ERROR: missing Vault root token (set VAULT_TOKEN in env)"
     exit 1
 fi
 
 # Vault setup script. vault needs to be unsealed first
-vault status | fgrep -q "Sealed: true"
+vault status | fgrep "Sealed" | fgrep -q "true"
 if [ $? -eq 0 ]
 then
     echo "ERROR: Vault is sealed"
@@ -51,29 +50,29 @@ fi
 
 #Enable logging
 rm vault/logs/audit.log
-vault audit-enable -description="Audit logs to a file" file file_path="/logs/audit.log" log_raw=true
+vault audit enable -description="Audit logs to a file" file file_path="/logs/audit.log" log_raw=true
 
 #Add Vault policies from files
 for policy in $(ls vault/*.hcl); do
-  vault policy-write $(basename $policy .hcl) $policy
+  vault policy write $(basename $policy .hcl) $policy
 done
 
 #Userpass authentication backend
 PASSWORD=$(echo $USER:salt | base64 | head -c 10)
-vault auth-enable -description="User/password based credentials" userpass
+vault auth enable -description="User/password based credentials" userpass
 
 vault write auth/userpass/users/$USER password=$PASSWORD policies=admin
 
 echo "INFO: created a user with a dummy password, not secure"
-echo "INFO: login with 'vault auth -method=userpass username=$USER password=$PASSWORD'"
+echo "INFO: login with 'vault login -method=userpass username=$USER password=$PASSWORD'"
 
 #GitHub authentication backend
-vault auth-enable -description="Authenticate using GitHub" github
+vault auth enable -description="Authenticate using GitHub" github
 vault write auth/github/config organization=vibrato
 vault write auth/github/map/teams/vibrato-engineers value=admin
 
 echo "INFO: you can provide your personal access token with VAULT_AUTH_GITHUB_TOKEN or"
-echo "INFO: login with 'vault auth -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
+echo "INFO: login with 'vault login -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
 
 #upload some SSH keys to the secret backend
 ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
@@ -85,7 +84,7 @@ echo "INFO: uploaded a dummy ssh key pair to secret/$USER/id_temp"
 echo "INFO: retrieve with 'vault read -field=private secret/$USER/id_temp'"
 
 #TOTP Time-based One Time Passcodes
-vault mount -description="Time-based One Time Passcodes" totp
+vault secrets enable -description="Time-based One Time Passcodes" totp
 vault write -format=json totp/keys/$USER generate=true account_name=$USER issuer=Vault > $USER.totp.json
 
 jq -r .data.barcode $USER.totp.json | base64 -D | open -f -a Preview
@@ -100,7 +99,7 @@ echo "INFO: validate with 'vault write totp/code/$USER code=<T-OTP-Code>'"
 #Consul secret backend mount
 if [ -n "$CONSUL_HTTP_TOKEN" ]
 then
-  vault mount -description="Access Consul tokens" consul
+  vault secrets enable -description="Access Consul tokens" consul
 
   vault write consul/config/access address=consula:8500 token=$CONSUL_HTTP_TOKEN
 
@@ -119,7 +118,7 @@ rm -f id_temp.pub
 #AWS secret backend mount
 if [ -n "$AWS_ACCESS_KEY_ID" ]
 then
-  vault mount -description="Access AWS Credentials" aws
+  vault secrets enable -description="Access AWS Credentials" aws
 
   vault write aws/config/root access_key=$AWS_ACCESS_KEY_ID secret_key=$AWS_SECRET_ACCESS_KEY region=$AWS_DEFAULT_REGION
 
@@ -132,15 +131,15 @@ fi
 #PKI secret (Root and Intermediate CA) backend mount
 if [ -n "$CONSUL_VAULT_FQDN" ]
 then
-  vault mount -description="Host a Root CA" -path=rootca pki
-  vault mount-tune -max-lease-ttl=87600h rootca
+  vault secrets enable -description="Host a Root CA" -path=rootca pki
+  vault secrets tune -max-lease-ttl=87600h rootca
   vault write rootca/config/urls issuing_certificates="$VAULT_ADDR/v1/rootca/ca" crl_distribution_points="$VAULT_ADDR/v1/rootca/crl"
   vault write rootca/roles/$DOMAIN_ROOT allowed_domains="$DOMAIN_ROOT" allow_subdomains="true" allow_localhost="true" max_ttl="8760h" key_bits=521 key_type=ec
 
   vault write -format=json rootca/root/generate/internal common_name="$USER self-signed Root CA" ttl=8760h format=pem_bundle key_bits=521 key_type=ec > $DOMAIN_ROOT.json
 
-  vault mount -description="Host an Intermediate CA" -path=intca pki
-  vault mount-tune -max-lease-ttl=8760h intca
+  vault secrets enable -description="Host an Intermediate CA" -path=intca pki
+  vault secrets tune -max-lease-ttl=8760h intca
   vault write -format=json intca/intermediate/generate/internal common_name="$USER intermediate CA" ttl=8760h format=pem_bundle key_bits=256 key_type=ec > int.$DOMAIN_ROOT.csr.json
   jq -r .data.csr int.$DOMAIN_ROOT.csr.json > csr.pem
   vault write -format=json rootca/root/sign-intermediate csr=@csr.pem format=pem_bundle use_csr_values=true > int.$DOMAIN_ROOT.json
@@ -166,7 +165,7 @@ then
 
   echo "INFO: created Certificates that can be used to secure communications with the cluster."
   echo "INFO: generate more with 'vault write intca/issue/$DOMAIN_ROOT common_name=test.$DOMAIN_ROOT'"
-  docker kill -s SIGHUP vaultinadock_vault_1
+  docker kill -s SIGHUP vault-ina-dock_vault_1
 fi
 
 #Cert authentication backend
@@ -176,7 +175,7 @@ fi
 # vault write -format=json intca/issue/$DOMAIN_ROOT common_name="client.$DOMAIN_ROOT" format=pem_bundle > client.$DOMAIN_ROOT.json
 # jq -r .data.certificate client.tristan.example.com.json > client.certificate.pem
 # openssl pkcs12 -export -out certificate.p12 -in client.certificate.pem -certfile client.cacert.pem
-# echo "INFO: login with 'vault auth -method=cert -ca-cert=vault/cert/intca_cert.pem -client-cert=$USER.cert.pem -client-key=$USER.key.pem'"
+# echo "INFO: login with 'vault login -method=cert -ca-cert=vault/cert/intca_cert.pem -client-cert=$USER.cert.pem -client-key=$USER.key.pem'"
 
 
 echo
@@ -187,5 +186,5 @@ echo "export CONSUL_HTTP_ADDR=$CONSUL_HTTP_ADDR"
 echo
 echo "export VAULT_SKIP_VERIFY=true"
 echo " or set "
-echo "VAULT_TLS_SERVER_NAME=$CONSUL_VAULT_FQDN"
-echo "VAULT_CAPATH=$PWD/vault/certs/ca_cert.pem"
+echo "export VAULT_TLS_SERVER_NAME=$CONSUL_VAULT_FQDN"
+echo "export VAULT_CAPATH=$PWD/vault/certs/ca_cert.pem"

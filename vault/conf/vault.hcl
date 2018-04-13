@@ -10,6 +10,7 @@ listener "tcp" {
   address = "0.0.0.0:8200"
   tls_key_file = "/certs/privkey.pem"
   tls_cert_file = "/certs/fullchain.pem"
+  tls_disable_client_certs = true
 }
 
 ui = true
