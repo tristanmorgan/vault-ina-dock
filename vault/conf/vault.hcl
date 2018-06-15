@@ -3,7 +3,7 @@ backend "consul" {
   path = "vault/"
   scheme = "http"
   token = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
-  disable_clustering = "false"
+  service_tags = "urlprefix-vault.service.consul/"
 }
 
 listener "tcp" {
@@ -14,3 +14,4 @@ listener "tcp" {
 }
 
 ui = true
+raw_storage_endpoint = true

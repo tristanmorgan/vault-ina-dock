@@ -2,6 +2,8 @@ version: '3'
 services:
   consula:
     image: consul
+    environment:
+      CONSUL_UI_BETA: 1
     tmpfs:
      - /tmp
      - /data
@@ -61,8 +63,14 @@ services:
 
   vault:
     image: vault
+    environment:
+     - AWS_DEFAULT_REGION
+     - AWS_ACCESS_KEY_ID
+     - AWS_SECRET_ACCESS_KEY
     cap_add:
      - IPC_LOCK
+    expose:
+     - "8201"
     ports:
      - "8200:8200"
     volumes:
