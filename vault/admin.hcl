@@ -1,31 +1,34 @@
+# List, create, update, and delete key/value secrets
 path "secret/*" {
-  policy = "write"
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-path "auth/token/lookup-self" {
-  policy = "read"
+# List existing policies
+path "sys/policies" {
+  capabilities = ["read", "list"]
 }
 
-path "auth/token/renew-self" {
-  policy = "write"
+# Create and manage ACL policies broadly across Vault
+path "sys/policies/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-path "aws/config/root" {
-  policy = "write"
+# Manage and manage secret backends broadly across Vault.
+path "sys/mounts/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-path "aws/sts/*" {
-  policy = "read"
+# Read health checks
+path "sys/health" {
+  capabilities = ["read", "sudo"]
 }
 
-path "consul/creds/*" {
-  policy = "read"
+# Manage auth backends broadly across Vault
+path "auth/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 
-path "sys/mounts" {
-  policy = "write"
-}
-
-path "sys/auth" {
-  policy = "write"
+# List, create, update, and delete auth backends
+path "sys/auth/*" {
+  capabilities = ["create", "read", "update", "delete", "sudo"]
 }

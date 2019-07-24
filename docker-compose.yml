@@ -1,10 +1,10 @@
-version: '2'
+version: '3'
 services:
   consula:
     image: consul
-    tmpfs: /data
-    cap_add:
-     - NET_BIND_SERVICE
+    tmpfs:
+     - /tmp
+     - /data
     expose:
      - "8300"
      - "8301"
@@ -12,58 +12,71 @@ services:
      - "8301/udp"
      - "8302/udp"
     ports:
-     - "8400:8400"
+     - "8443:8443"
      - "8500:8500"
      - "8600:8600"
      - "8600:8600/udp"
     volumes:
      - ./consul/conf:/conf:ro
-    command: agent -server -config-dir=/conf -bootstrap-expect=3
+     - ./consul/certs:/certs:ro
+    command: agent -server -config-dir=/conf -bootstrap-expect=3 -retry-join=consulb -retry-join=consulc
   consulb:
     image: consul
-    tmpfs: /data
-    cap_add:
-     - NET_BIND_SERVICE
+    tmpfs:
+     - /tmp
+     - /data
     expose:
      - "8300"
      - "8301"
      - "8302"
      - "8301/udp"
      - "8302/udp"
-     - "8400"
      - "8600"
      - "8600/udp"
+    ports:
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
+     - ./consul/certs:/certs:ro
     command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc
   consulc:
     image: consul
-    tmpfs: /data
-    cap_add:
-     - NET_BIND_SERVICE
+    tmpfs:
+     - /tmp
+     - /data
     expose:
      - "8300"
      - "8301"
      - "8302"
      - "8301/udp"
      - "8302/udp"
-     - "8400"
      - "8600"
      - "8600/udp"
+    ports:
      - "8500"
     volumes:
      - ./consul/conf:/conf:ro
+     - ./consul/certs:/certs:ro
     command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulb
 
   vault:
     image: vault
+    environment:
+     - AWS_DEFAULT_REGION
+     - AWS_ACCESS_KEY_ID
+     - AWS_SECRET_ACCESS_KEY
     cap_add:
      - IPC_LOCK
+    expose:
+     - "8201"
     ports:
      - "8200:8200"
     volumes:
      - ./vault/conf:/conf:ro
+     - ./vault/certs:/certs:ro
+     - ./vault/ssl:/etc/ssl:ro
+     - ./vault/logs:/logs:rw
+    restart: unless-stopped
     command: server -config=/conf
     depends_on:
       - "consula"

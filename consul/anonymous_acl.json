@@ -1,6 +1,0 @@
-{
-  "ID": "anonymous",
-  "Name": "Anonymous Token",
-  "Type": "client",
-  "Rules": "key \"\" { policy = \"read\" }\nkey \"_rexec/\" { policy = \"deny\" }\nkey \"vault/\" { policy = \"deny\" }\nservice \"\" { policy = \"read\" }\n"
-}
