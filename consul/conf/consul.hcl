@@ -1,9 +1,14 @@
-acl_datacenter = "system-internal"
-acl_default_policy = "deny"
-acl_master_token = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
-acl_agent_token = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
-acl_down_policy = "extend-cache"
-acl_enforce_version_8 = false
+acl {
+  enabled = true
+  default_policy = "deny"
+  down_policy = "extend-cache"
+  tokens {
+    agent = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
+    master = "ab1469ec-078c-42cf-bb7b-6ef2a52360ea"
+  }
+}
+
+primary_datacenter = "system-internal"
 #ca_file = "/certs/ca_cert.pem"
 cert_file = "/certs/fullchain.pem"
 client_addr = "{{GetPrivateIP}} 127.0.0.1"
@@ -13,10 +18,12 @@ datacenter = "system-internal"
 disable_host_node_id = true
 disable_update_check = true
 encrypt = "3a6nE3qvOSwaPVcg73nxLQ=="
+# enable_additional_node_meta_txt = true
 key_file = "/certs/privkey.pem"
 leave_on_terminate = true
 log_level = "INFO"
 ports = {
+  grpc  = 8502
   dns   = 8600
   https = 8443
 }

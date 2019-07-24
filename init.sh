@@ -4,11 +4,12 @@
 export DOMAIN_ROOT=consul
 export CONSUL_FQDN=consul.service.$DOMAIN_ROOT
 export VAULT_FQDN=vault.service.$DOMAIN_ROOT
-export CONSUL_HTTP_TOKEN=$(awk '/acl_master_token/ {print substr($3,2,36)}' consul/conf/consul.hcl)
-export CONSUL_DC=$(awk '/datacenter/ {print $3}' consul/conf/consul.hcl)
+export CONSUL_HTTP_TOKEN=$(awk '/master/ {print substr($3,2,36)}' consul/conf/consul.hcl)
+export CONSUL_DC=$(awk '/primary_datacenter/ {print $3}' consul/conf/consul.hcl)
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
 
-curl -X PUT -d @consul/anonymous_acl.json --header "X-Consul-Token: $CONSUL_HTTP_TOKEN" "http://$CONSUL_HTTP_ADDR/v1/acl/update"
+consul acl policy create -name "anonymous" -description "Anonymous Policy" -rules @consul/anonymous_acl.hcl
+consul acl token update -id 00000000-0000-0000-0000-000000000002 -policy-name "anonymous"
 
 #initialise Vault
 export VAULT_ADDR=https://127.0.0.1:8200
@@ -26,6 +27,8 @@ then
     done
 
     export VAULT_TOKEN=$(echo "$VAULT_INIT_OUT" | awk '/Token/ {print $NF}')
+
+    vault login $VAULT_TOKEN
 
     echo "WARN: don't loose these unseal keys nor token"
     echo "$VAULT_INIT_OUT" | grep 'Key'
@@ -77,6 +80,7 @@ echo "INFO: you can provide your personal access token with VAULT_AUTH_GITHUB_TO
 echo "INFO: login with 'vault login -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
 
 #upload some SSH keys to the secret backend
+vault secrets enable -path=secret kv
 ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
 
 vault write secret/$USER/id_temp private=@id_temp public=@id_temp.pub
@@ -108,7 +112,7 @@ then
   POLICY='key "" { policy = "read" }'
   echo $POLICY | base64 | vault write consul/roles/readonly policy=-
 
-  curl -X PUT -d @id_temp.pub http://$CONSUL_HTTP_ADDR/v1/kv/$USER?token=$CONSUL_HTTP_TOKEN
+  consul kv put $USER @id_temp.pub
 
   echo
   echo "INFO: created a readonly role within Consul"
@@ -124,7 +128,7 @@ then
 
   vault write aws/config/root access_key=$AWS_ACCESS_KEY_ID secret_key=$AWS_SECRET_ACCESS_KEY region=$AWS_DEFAULT_REGION
 
-  vault write aws/roles/readonly arn=arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+  vault write aws/roles/readonly policy_arns=arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
 
   echo "INFO: created a readonly role within AWS"
   echo "INFO: retrieve with 'vault read aws/creds/readonly'"
@@ -160,9 +164,9 @@ then
   # request a cert for Vault
   vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$VAULT_FQDN" ip_sans=127.0.0.1 format=pem_bundle > $VAULT_FQDN.json
 
-  jq -r .data.issuing_ca int.$DOMAIN_ROOT.json > ca_cert.pem
+  jq -r .data.ca_chain[0] $VAULT_FQDN.json > ca_cert.pem
   jq -r .data.certificate $VAULT_FQDN.json > fullchain.pem
-#  cat ca_cert.pem >> fullchain.pem
+  cat ca_cert.pem >> fullchain.pem
   jq -r .data.private_key $VAULT_FQDN.json > privkey.pem
 
   mv *.pem vault/certs
@@ -170,9 +174,9 @@ then
   # request a cert for Consul
   vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_FQDN" alt_names="server.$CONSUL_DC.$DOMAIN_ROOT" ip_sans=127.0.0.1 format=pem_bundle > $CONSUL_FQDN.json
 
-  jq -r .data.issuing_ca int.$DOMAIN_ROOT.json > ca_cert.pem
+  jq -r .data.ca_chain[0] $CONSUL_FQDN.json > ca_cert.pem
   jq -r .data.certificate $CONSUL_FQDN.json > fullchain.pem
-#  cat ca_cert.pem >> fullchain.pem
+  cat ca_cert.pem >> fullchain.pem
   jq -r .data.private_key $CONSUL_FQDN.json > privkey.pem
 
   mv *.pem consul/certs
@@ -184,16 +188,6 @@ then
   docker kill -s SIGHUP vault-ina-dock_vault_1
   docker kill -s SIGHUP vault-ina-dock_consula_1
 fi
-
-#Cert authentication backend
-# vault auth-enable -description="Authenticate using a Personal Certificate" cert
-# vault write auth/cert/certs/$USER display_name=$USER policies=admin certificate=@vault/cert/intca_cert.pem ttl=3600
-#
-# vault write -format=json intca/issue/$DOMAIN_ROOT common_name="client.$DOMAIN_ROOT" format=pem_bundle > client.$DOMAIN_ROOT.json
-# jq -r .data.certificate client.tristan.example.com.json > client.certificate.pem
-# openssl pkcs12 -export -out certificate.p12 -in client.certificate.pem -certfile client.cacert.pem
-# echo "INFO: login with 'vault login -method=cert -ca-cert=vault/cert/intca_cert.pem -client-cert=$USER.cert.pem -client-key=$USER.key.pem'"
-
 
 echo
 echo "don't forget to:"

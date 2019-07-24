@@ -4,12 +4,12 @@ path "secret/*" {
 }
 
 # List existing policies
-path "sys/policy" {
-  capabilities = ["read"]
+path "sys/policies" {
+  capabilities = ["read", "list"]
 }
 
 # Create and manage ACL policies broadly across Vault
-path "sys/policy/*" {
+path "sys/policies/*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 

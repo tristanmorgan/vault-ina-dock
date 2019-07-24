@@ -1,16 +1,10 @@
 #!/bin/bash
 
-export VAULT_VERSION=0.10.3
+HC_TAGS_FEED="https://releases.hashicorp.com/vault/"
+VAULT_VERSION=$(curl -s "$HC_TAGS_FEED" | awk 'match($0,"vault") {match($0,/[0-9\.]+/); print substr($0,RSTART,RLENGTH); exit}' )
 
 if [ -n "$1" ]; then
-  export VAULT_VERSION=$1
+  VAULT_VERSION=$1
 fi
 
-#if [ ! -f vault_${VAULT_VERSION}_linux_amd64.zip ]; then
-#  curl -OL https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
-#fi
-#unzip vault_${VAULT_VERSION}_linux_amd64.zip
-
 docker build --build-arg VAULT_VERSION=${VAULT_VERSION} -t vault:${VAULT_VERSION} -t vault:latest .
-
-rm vault

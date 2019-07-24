@@ -2,8 +2,6 @@ version: '3'
 services:
   consula:
     image: consul
-    environment:
-      CONSUL_UI_BETA: 1
     tmpfs:
      - /tmp
      - /data

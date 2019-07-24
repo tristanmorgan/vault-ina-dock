@@ -10,4 +10,4 @@ LABEL Description="HashiCorp Vault in a single binary Container"
 EXPOSE 8200 8201
 COPY --from=builder /vault /
 ENTRYPOINT ["/vault"]
-CMD ["server","-dev"]
+CMD ["server","-dev","-dev-listen-address=0.0.0.0:8200"]
