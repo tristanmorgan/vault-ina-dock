@@ -11,6 +11,15 @@ listener "tcp" {
   tls_key_file = "/certs/privkey.pem"
   tls_cert_file = "/certs/fullchain.pem"
   tls_disable_client_certs = true
+
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
+}
+
+telemetry {
+  prometheus_retention_time = "30s",
+  disable_hostname = true
 }
 
 ui = true

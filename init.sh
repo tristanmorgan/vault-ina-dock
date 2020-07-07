@@ -5,7 +5,7 @@ export DOMAIN_ROOT=consul
 export CONSUL_FQDN=consul.service.$DOMAIN_ROOT
 export VAULT_FQDN=vault.service.$DOMAIN_ROOT
 export CONSUL_HTTP_TOKEN=$(awk '/master/ {print substr($3,2,36)}' consul/conf/consul.hcl)
-export CONSUL_DC=$(awk '/primary_datacenter/ {print $3}' consul/conf/consul.hcl)
+export CONSUL_DC=$(awk '/datacenter/ {print substr($3, 2, length($3)-2)i ; exit}' consul/conf/consul.hcl)
 export CONSUL_HTTP_ADDR=127.0.0.1:8500
 
 consul acl policy create -name "anonymous" -description "Anonymous Policy" -rules @consul/anonymous_acl.hcl
@@ -172,7 +172,7 @@ then
   mv *.pem vault/certs
 
   # request a cert for Consul
-  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_FQDN" alt_names="server.$CONSUL_DC.$DOMAIN_ROOT" ip_sans=127.0.0.1 format=pem_bundle > $CONSUL_FQDN.json
+  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_FQDN" alt_names="server.$CONSUL_DC.$DOMAIN_ROOT" ip_sans="127.0.0.1,::1" format=pem_bundle > $CONSUL_FQDN.json
 
   jq -r .data.ca_chain[0] $CONSUL_FQDN.json > ca_cert.pem
   jq -r .data.certificate $CONSUL_FQDN.json > fullchain.pem

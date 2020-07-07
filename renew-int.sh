@@ -3,7 +3,7 @@
 export DOMAIN_ROOT=consul
 export CONSUL_FQDN=consul.service.$DOMAIN_ROOT
 export VAULT_FQDN=vault.service.$DOMAIN_ROOT
-export CONSUL_DC=$(awk '/datacenter/ {print $3}' consul/conf/consul.hcl)
+export CONSUL_DC=$(awk '/datacenter/ {print substr($3, 2, length($3)-2) ; exit}' consul/conf/consul.hcl)
 
 export VAULT_SKIP_VERIFY=true
 
@@ -39,7 +39,7 @@ then
   rm int.$DOMAIN_ROOT.csr.json csr.pem
 
   # request a cert for Vault
-  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$VAULT_FQDN" ip_sans=127.0.0.1 format=pem_bundle > $VAULT_FQDN.json
+  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$VAULT_FQDN" ip_sans=127.0.0.1,::1 format=pem_bundle > $VAULT_FQDN.json
 
   jq -r .data.issuing_ca int.$DOMAIN_ROOT.json > ca_cert.pem
   jq -r .data.certificate $VAULT_FQDN.json > fullchain.pem
@@ -49,7 +49,7 @@ then
   mv *.pem vault/certs
 
   # request a cert for Consul
-  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="$CONSUL_FQDN" alt_names="server.$CONSUL_DC.$DOMAIN_ROOT" ip_sans=127.0.0.1 format=pem_bundle > $CONSUL_FQDN.json
+  vault write -format=json intca/issue/$DOMAIN_ROOT common_name="server.$CONSUL_DC.$DOMAIN_ROOT" alt_names="$CONSUL_FQDN" ip_sans=127.0.0.1,::1 format=pem_bundle > $CONSUL_FQDN.json
 
   jq -r .data.issuing_ca int.$DOMAIN_ROOT.json > ca_cert.pem
   jq -r .data.certificate $CONSUL_FQDN.json > fullchain.pem

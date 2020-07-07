@@ -1,3 +1,4 @@
+# advertise_addr_wan = 10.10.10.10
 acl {
   enabled = true
   default_policy = "deny"
@@ -9,7 +10,7 @@ acl {
 }
 
 primary_datacenter = "system-internal"
-#ca_file = "/certs/ca_cert.pem"
+ca_file = "/certs/ca_cert.pem"
 cert_file = "/certs/fullchain.pem"
 client_addr = "{{GetPrivateIP}} 127.0.0.1"
 bind_addr = "{{GetPrivateIP}}"
@@ -17,7 +18,7 @@ data_dir = "/data"
 datacenter = "system-internal"
 disable_host_node_id = true
 disable_update_check = true
-encrypt = "3a6nE3qvOSwaPVcg73nxLQ=="
+encrypt = "Wks1sVev7Row2uB0GX0ssec/CY36BH1dMXxtj/bdNjM="
 # enable_additional_node_meta_txt = true
 key_file = "/certs/privkey.pem"
 leave_on_terminate = true
@@ -34,7 +35,9 @@ recursors = [
   "8.8.4.4",
 ]
 rejoin_after_leave = false
-server_name = "consul.service.consul"
 ui = true
-# verify_incoming_rpc = true
-# verify_outgoing = true
+
+verify_outgoing = true
+# server_name = "consul.service.consul"
+verify_server_hostname = true
+verify_incoming_rpc = true
