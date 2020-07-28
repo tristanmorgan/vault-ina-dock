@@ -1,4 +1,12 @@
 version: '3'
+
+networks:
+  app_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.19.0.0/16"
+
 services:
   consula:
     image: consul
@@ -6,12 +14,12 @@ services:
      - /tmp
      - /data
     expose:
-     - "8300"
      - "8301"
      - "8302"
      - "8301/udp"
      - "8302/udp"
     ports:
+     - "8300:8300"
      - "8443:8443"
      - "8500:8500"
      - "8600:8600"
@@ -19,6 +27,8 @@ services:
     volumes:
      - ./consul/conf:/conf:ro
      - ./consul/certs:/certs:ro
+    networks:
+     - app_net
     command: agent -server -config-dir=/conf -bootstrap-expect=3 -retry-join=consulb -retry-join=consulc
   consulb:
     image: consul
@@ -38,6 +48,8 @@ services:
     volumes:
      - ./consul/conf:/conf:ro
      - ./consul/certs:/certs:ro
+    networks:
+     - app_net
     command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc
   consulc:
     image: consul
@@ -57,6 +69,8 @@ services:
     volumes:
      - ./consul/conf:/conf:ro
      - ./consul/certs:/certs:ro
+    networks:
+     - app_net
     command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulb
 
   vault:
@@ -65,12 +79,15 @@ services:
      - AWS_DEFAULT_REGION
      - AWS_ACCESS_KEY_ID
      - AWS_SECRET_ACCESS_KEY
+     - VAULT_API_ADDR=https://127.0.0.1:8200
+     - VAULT_CLUSTER_ADDR=https://172.19.0.10:8201
     cap_add:
      - IPC_LOCK
     expose:
      - "8201"
     ports:
      - "8200:8200"
+     - "8250:8250"
     volumes:
      - ./vault/conf:/conf:ro
      - ./vault/certs:/certs:ro
@@ -82,3 +99,37 @@ services:
       - "consula"
       - "consulb"
       - "consulc"
+    networks:
+      app_net:
+        ipv4_address: 172.19.0.10
+
+  vault2:
+    image: vault
+    environment:
+     - AWS_DEFAULT_REGION
+     - AWS_ACCESS_KEY_ID
+     - AWS_SECRET_ACCESS_KEY
+     - VAULT_API_ADDR=https://127.0.0.1:8202
+     - VAULT_CLUSTER_ADDR=https://172.19.0.12:8201
+    cap_add:
+     - IPC_LOCK
+    expose:
+     - "8201"
+     - "8250"
+    ports:
+     - "8202:8200"
+    volumes:
+     - ./vault/conf:/conf:ro
+     - ./vault/certs:/certs:ro
+     - ./vault/ssl:/etc/ssl:ro
+     - ./vault/logs:/logs:rw
+    restart: unless-stopped
+    command: server -config=/conf
+    depends_on:
+      - "consula"
+      - "consulb"
+      - "consulc"
+    networks:
+      app_net:
+        ipv4_address: 172.19.0.12
+
