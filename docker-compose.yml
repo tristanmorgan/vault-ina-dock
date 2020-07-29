@@ -14,12 +14,12 @@ services:
      - /tmp
      - /data
     expose:
+     - "8300"
      - "8301"
      - "8302"
      - "8301/udp"
      - "8302/udp"
     ports:
-     - "8300:8300"
      - "8443:8443"
      - "8500:8500"
      - "8600:8600"
@@ -29,7 +29,7 @@ services:
      - ./consul/certs:/certs:ro
     networks:
      - app_net
-    command: agent -server -config-dir=/conf -bootstrap-expect=3 -retry-join=consulb -retry-join=consulc
+    command: agent -server -config-dir=/conf -bootstrap-expect=3 -retry-join=consulb -retry-join=consulc -node-meta rz:a
   consulb:
     image: consul
     tmpfs:
@@ -50,7 +50,7 @@ services:
      - ./consul/certs:/certs:ro
     networks:
      - app_net
-    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc
+    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulc -node-meta rz:b
   consulc:
     image: consul
     tmpfs:
@@ -71,7 +71,7 @@ services:
      - ./consul/certs:/certs:ro
     networks:
      - app_net
-    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulb
+    command: agent -server -config-dir=/conf -retry-join=consula -retry-join=consulb  -node-meta rz:c
 
   vault:
     image: vault
@@ -79,7 +79,7 @@ services:
      - AWS_DEFAULT_REGION
      - AWS_ACCESS_KEY_ID
      - AWS_SECRET_ACCESS_KEY
-     - VAULT_API_ADDR=https://127.0.0.1:8200
+     - VAULT_API_ADDR=https://10.10.10.133:8200
      - VAULT_CLUSTER_ADDR=https://172.19.0.10:8201
     cap_add:
      - IPC_LOCK
@@ -87,7 +87,6 @@ services:
      - "8201"
     ports:
      - "8200:8200"
-     - "8250:8250"
     volumes:
      - ./vault/conf:/conf:ro
      - ./vault/certs:/certs:ro
@@ -109,13 +108,12 @@ services:
      - AWS_DEFAULT_REGION
      - AWS_ACCESS_KEY_ID
      - AWS_SECRET_ACCESS_KEY
-     - VAULT_API_ADDR=https://127.0.0.1:8202
-     - VAULT_CLUSTER_ADDR=https://172.19.0.12:8201
+     - VAULT_API_ADDR=https://10.10.10.133:8202
+     - VAULT_CLUSTER_ADDR=https://172.19.0.10:8201
     cap_add:
      - IPC_LOCK
     expose:
      - "8201"
-     - "8250"
     ports:
      - "8202:8200"
     volumes:

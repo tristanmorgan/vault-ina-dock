@@ -9,6 +9,9 @@ acl {
   }
 }
 
+autopilot {
+  redundancy_zone_tag = "rz"
+}
 primary_datacenter = "system-internal"
 ca_file = "/certs/ca_cert.pem"
 cert_file = "/certs/fullchain.pem"
@@ -27,6 +30,7 @@ ports = {
   grpc  = 8502
   dns   = 8600
   https = 8443
+#  serf_wan = -1
 }
 protocol = 3
 raft_protocol = 3
@@ -37,7 +41,9 @@ recursors = [
 rejoin_after_leave = false
 ui = true
 
-verify_outgoing = true
+# verify_outgoing = true
 # server_name = "consul.service.consul"
-verify_server_hostname = true
-verify_incoming_rpc = true
+# verify_server_hostname = true
+# verify_incoming_rpc = true
+
+log_level = "DEBUG"

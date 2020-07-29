@@ -45,3 +45,9 @@ TLS Certs
 
 You can also create your own slef signed certificates and even use them for the communication to Consul and Vault and between the two. The gets stuck in a bootstrap cenario where you use Vault to generate the certificates but need certificates to start Vault. replace the "tls_..." lines with "tls_disable = 1" to start without TLS, generate your certificates and then stop and restart after reverting.
 
+Redundancy Zones
+----------------
+
+run the following to set the meta flag
+
+    $ consul operator autopilot set-config  -redundancy-zone-tag=rz 
