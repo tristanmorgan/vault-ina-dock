@@ -8,6 +8,7 @@ FROM scratch
 LABEL maintainer="Tristan Morgan <tristan@vibrato.com.au>"
 LABEL Description="HashiCorp Vault in a single binary Container"
 EXPOSE 8200 8201
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /vault /
 ENTRYPOINT ["/vault"]
 CMD ["server","-dev","-dev-listen-address=0.0.0.0:8200"]

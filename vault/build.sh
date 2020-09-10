@@ -7,4 +7,6 @@ if [ -n "$1" ]; then
   VAULT_VERSION=$1
 fi
 
-docker build --build-arg VAULT_VERSION=${VAULT_VERSION} -t vault:${VAULT_VERSION} -t vault:latest .
+VAULT_TAG=$(echo $VAULT_VERSION | tr '+' '-')
+
+docker build --build-arg VAULT_VERSION=${VAULT_VERSION} -t vault:${VAULT_TAG} -t vault:latest .

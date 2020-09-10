@@ -65,6 +65,7 @@ done
 #Userpass authentication backend
 PASSWORD=$(echo $USER:salt | base64 | head -c 10)
 vault auth enable -description="User/password based credentials" userpass
+vault auth tune -default-lease-ttl=1h userpass/
 
 vault write auth/userpass/users/$USER password=$PASSWORD policies=admin
 
@@ -73,6 +74,7 @@ echo "INFO: login with 'vault login -method=userpass username=$USER password=$PA
 
 #GitHub authentication backend
 vault auth enable -description="Authenticate using GitHub" github
+vault auth tune -default-lease-ttl=2h github/
 vault write auth/github/config organization=vibrato
 vault write auth/github/map/teams/vibrato-engineers value=admin
 
@@ -80,10 +82,11 @@ echo "INFO: you can provide your personal access token with VAULT_AUTH_GITHUB_TO
 echo "INFO: login with 'vault login -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
 
 #upload some SSH keys to the secret backend
-vault secrets enable -path=secret kv
+vault secrets enable -path=secret kv-v2
+vault secrets tune -default-lease-ttl=30m secret/
 ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
 
-vault write secret/$USER/id_temp private=@id_temp public=@id_temp.pub
+vault kv put secret/$USER/id_temp private=@id_temp public=@id_temp.pub
 rm -f id_temp
 
 echo "INFO: uploaded a dummy ssh key pair to secret/$USER/id_temp"
@@ -106,6 +109,7 @@ echo "INFO: validate with 'vault write totp/code/$USER code=<T-OTP-Code>'"
 if [ -n "$CONSUL_HTTP_TOKEN" ]
 then
   vault secrets enable -description="Access Consul tokens" consul
+  vault secrets tune -default-lease-ttl=1h consul/
 
   vault write consul/config/access address=consula:8500 token=$CONSUL_HTTP_TOKEN
 
@@ -125,10 +129,11 @@ rm -f id_temp.pub
 if [ -n "$AWS_ACCESS_KEY_ID" ]
 then
   vault secrets enable -description="Access AWS Credentials" aws
+  vault secrets tune -default-lease-ttl=2h aws/
 
   vault write aws/config/root access_key=$AWS_ACCESS_KEY_ID secret_key=$AWS_SECRET_ACCESS_KEY region=$AWS_DEFAULT_REGION
 
-  vault write aws/roles/readonly policy_arns=arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+  vault write aws/roles/readonly credential_type=iam_user policy_arns=arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
 
   echo "INFO: created a readonly role within AWS"
   echo "INFO: retrieve with 'vault read aws/creds/readonly'"

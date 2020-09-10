@@ -9,6 +9,7 @@ LABEL maintainer="Tristan Morgan <tristan@vibrato.com.au>"
 LABEL Description="HashiCorp Consul in a single binary Container"
 EXPOSE 8300 8301 8301/udp 8302 8302/udp 8443 8500 8502 8600 8600/udp
 WORKDIR /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /consul /
 ENTRYPOINT ["/consul"]
 CMD ["agent","-server","-dev","-client=0.0.0.0"]
