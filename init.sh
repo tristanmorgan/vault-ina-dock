@@ -82,7 +82,7 @@ echo "INFO: you can provide your personal access token with VAULT_AUTH_GITHUB_TO
 echo "INFO: login with 'vault login -method=github token=000000905b381e723b3d6a7d52f148a5d43c4b45'"
 
 #upload some SSH keys to the secret backend
-vault secrets enable -path=secret kv-v2
+vault secrets enable -description="Key Value Store v2" -path=secret kv-v2
 vault secrets tune -default-lease-ttl=30m secret/
 ssh-keygen -q -t ed25519 -N $PASSWORD -C temp@vault -f id_temp
 
@@ -90,7 +90,7 @@ vault kv put secret/$USER/id_temp private=@id_temp public=@id_temp.pub
 rm -f id_temp
 
 echo "INFO: uploaded a dummy ssh key pair to secret/$USER/id_temp"
-echo "INFO: retrieve with 'vault read -field=private secret/$USER/id_temp'"
+echo "INFO: retrieve with 'vault kv get -field=private secret/$USER/id_temp'"
 
 #TOTP Time-based One Time Passcodes
 vault secrets enable -description="Time-based One Time Passcodes" totp
@@ -138,6 +138,37 @@ then
   echo "INFO: created a readonly role within AWS"
   echo "INFO: retrieve with 'vault read aws/creds/readonly'"
 fi
+
+#Transform engine
+vault secrets enable -description="Transform engine" transform
+vault write transform/role/payments transformations=ccn-fpe
+vault write transform/transformation/ccn-fpe \
+   type=fpe \
+   template=ccn \
+   tweak_source=internal \
+   allowed_roles=payments
+
+vault write transform/template/ccn \
+   type=regex \
+   pattern='(\d{4})-(\d{4})-(\d{4})-(\d{4})' \
+   alphabet=numerics
+
+vault write transform/alphabet/numerics alphabet="0123456789"
+
+echo "INFO: encode data with 'vault write transform/encode/payments value=1111-2222-3333-4444'"
+echo "INFO: decode with 'vault write transform/decode/payments value=0125-8640-3511-1951'"
+### end transform
+
+#KMIP engine
+vault secrets enable -description="Key Management Interoperability Protocol" kmip
+vault write kmip/config listen_addrs=0.0.0.0:5696
+
+vault write -f kmip/scope/my-service
+vault write kmip/scope/my-service/role/admin operation_all=true
+vault write -f kmip/scope/my-service/role/admin/credential/generate > kmip-keys.txt
+
+echo "INFO: to create new credentials use 'write -f kmip/scope/my-service/role/admin/credential/generate'"
+### end kmip
 
 #PKI secret (Root and Intermediate CA) backend mount
 if [ -n "$CONSUL_FQDN" ]

@@ -45,5 +45,3 @@ ui = true
 # server_name = "consul.service.consul"
 # verify_server_hostname = true
 # verify_incoming_rpc = true
-
-log_level = "DEBUG"

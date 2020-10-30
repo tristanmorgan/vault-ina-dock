@@ -1,6 +1,22 @@
 # List, create, update, and delete key/value secrets
+path "aws/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "consul/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
 path "secret/*" {
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "transform/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "totp/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
 }
 
 # List existing policies
